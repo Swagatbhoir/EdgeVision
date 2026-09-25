@@ -1,8 +1,42 @@
+# Virtual Environments
 .venv/
+venv/
+env/
+
+# Python Cache & Compilation
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Binary & Wheel packages
+*.whl
+
+# Environment & Config
 .env
+
+# Video Files & Datasets
 *.mp4
 *.avi
 *.mov
+
+# Weights & Model Files
 *.pt
+*.onnx
+*.engine
+*.tflite
+*.weights
+
+# YOLO / Ultralytics Output Runs
+runs/
+
+# Logs & Temporary Files
+*.log
+*.tmp
+
+# IDEs & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

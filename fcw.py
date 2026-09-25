@@ -1,28 +1,12 @@
 """
 fcw.py — Forward Collision Warning (FCW) module for EdgeVision ADAS.
 
-Pure detection -> risk logic. This module has NO camera or YOLO dependency:
+Pure detection -> risk logic with Flat-Ground IPM Distance Estimation:
 main.py feeds it the YOLO track results (boxes + classes) and it returns a
-stable warning level for the display/alert system.
-
-Design (simple + explainable, see ReadME.md):
-  * Relevance filter: the object's road contact point must be below the
-    horizon and inside the central driving corridor, and the class must be a
-    road obstacle (car, bus, truck, motorcycle, bicycle, person).
-  * Closeness is measured by BOX HEIGHT as a fraction of frame height.
-    No calibrated meters exist, so we never claim real distances.
-  * Time-to-collision uses the classic vision "tau" from scale change:
-        tau = height / (height growth rate)
-    This is a RELATIVE time-to-contact estimate, not a metric one.
-  * Levels SAFE -> CAUTION -> WARNING -> DANGER use enter/exit threshold
-    pairs (hysteresis) plus confirmation frames, so a single noisy YOLO
-    frame cannot flicker the warning.
-
-Wording (kept consistent across the app, ReadME.md section 6):
-    DANGER  -> "FORWARD COLLISION WARNING"   (big alert + beep)
-    WARNING -> "FORWARD COLLISION WARNING"
-    CAUTION -> "CAUTION"
+stable warning level and IPM metric distances for the display/alert system.
 """
+
+from ipm_distance import IPMDistanceEstimator
 
 # ---------------------------------------------------------------------------
 # Configuration (tunable; default values are reasonable for 640x480-class
@@ -92,9 +76,17 @@ LEVEL_INDEX = {level: i for i, level in enumerate(LEVEL_ORDER)}
 class ForwardCollisionWarning:
     """Tracks relevant objects and produces one stable FCW level per frame."""
 
-    def __init__(self, frame_width, frame_height):
+    def __init__(self, frame_width, frame_height, cam_height_m=1.25, pitch_angle_deg=5.0):
         self.frame_w = frame_width
         self.frame_h = frame_height
+
+        # IPM Ground-Plane Distance Estimator
+        self.ipm = IPMDistanceEstimator(
+            frame_width=frame_width,
+            frame_height=frame_height,
+            cam_height_m=cam_height_m,
+            pitch_angle_deg=pitch_angle_deg
+        )
 
         # Per track-id state: (time, raw height) samples + smoothed growth.
         self._track_state = {}
@@ -225,6 +217,9 @@ class ForwardCollisionWarning:
                         if tau > TTC_MAX:
                             tau = None
 
+        # Calculate metric ground distance and lateral position via IPM
+        dist_m, lat_m = self.ipm.estimate_distance(x1, y1, x2, y2)
+
         return {
             "track_id": track_id,
             "class_name": det["class_name"],
@@ -233,6 +228,8 @@ class ForwardCollisionWarning:
             "h_frac": h_frac,
             "tau": tau,
             "growth": growth,
+            "dist_m": dist_m,
+            "lat_m": lat_m,
             "natural_rank": self._enter_rank(h_frac, tau),
         }
 
