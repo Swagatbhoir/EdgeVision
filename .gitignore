@@ -40,3 +40,11 @@ runs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Model Exports & Binary Weights
+*.bin
+*.param
+*_ncnn_model/
+
+# Ultralytics Cache & Runtime Settings
+Ultralytics/

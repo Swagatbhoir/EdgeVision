@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdgeVision ADAS — Automotive Cockpit & Telemetry HUD</title>
+    
+    <!-- Google Fonts: Space Grotesk (UI) + JetBrains Mono (Telemetry) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Dashboard Styles -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body class="cockpit-body">
+    <!-- Top Cockpit Header -->
+    <header class="cockpit-header">
+        <div class="header-left">
+            <div class="brand-logo">
+                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <div class="brand-text">
+                    <span class="brand-title">EDGEVISION</span>
+                    <span class="brand-sub">EDGE-AI ADAS COCKPIT</span>
+                </div>
+            </div>
+            <div class="system-badge" id="system-status-badge">
+                <span class="status-dot pulse-green" id="conn-dot"></span>
+                <span class="status-label" id="conn-text">SYSTEM ONLINE</span>
+            </div>
+        </div>
+
+        <div class="header-center">
+            <!-- Global Top Master Warning Banner.
+                 role="status" + aria-live="assertive" so an alert change is
+                 announced to a screen reader the moment it fires, which matters
+                 when the visual alert is a colour change on a moving video. -->
+            <div class="master-alert-banner alert-normal" id="master-alert-banner"
+                 role="status" aria-live="assertive" aria-atomic="true">
+                <div class="alert-icon-container" id="alert-icon-box">
+                    <svg class="alert-svg-icon" id="alert-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <div class="alert-text-container">
+                    <div class="alert-headline" id="alert-headline">ALL SYSTEMS NORMAL</div>
+                    <div class="alert-subtext" id="alert-subtext">FORWARD ROAD CLEAR • LANE CENTERED</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <!-- Telemetry Performance Chips -->
+            <div class="perf-chip">
+                <span class="perf-label">FPS</span>
+                <span class="perf-value val-green" id="chip-fps">--.-</span>
+            </div>
+            <div class="perf-chip">
+                <span class="perf-label">YOLO</span>
+                <span class="perf-value" id="chip-latency">-- ms</span>
+            </div>
+
+            <!-- Audio Alert Button -->
+            <button class="icon-btn" id="audio-toggle-btn" title="Toggle Acoustic Alerts (Mute/Unmute)" aria-label="Toggle Audio Alerts">
+                <svg class="btn-icon" id="audio-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+            </button>
+
+            <!-- Simulator Trigger Button -->
+            <button class="action-btn sim-btn" id="sim-drawer-btn" title="Open ADAS Scenario Simulator">
+                <svg class="btn-icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span>SIMULATOR</span>
+            </button>
+
+            <!-- Settings Button -->
+            <button class="icon-btn" id="settings-toggle-btn" title="Open ADAS Settings & Calibration" aria-label="Open Settings">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+
+            <!-- Fullscreen Button -->
+            <button class="icon-btn" id="fullscreen-btn" title="Toggle Fullscreen Mode" aria-label="Toggle Fullscreen">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <main class="cockpit-grid">
+        <!-- Center-Left: Primary AR Video Feed -->
+        <section class="viewport-section">
+            <div class="video-container" id="video-wrapper">
+                <!-- Video Stream -->
+                <img id="adas-stream" src="/video_feed" alt="EdgeVision ADAS Camera Stream" class="video-stream">
+                
+                <!-- Corner Tactical Reticles -->
+                <div class="corner-reticle top-left"></div>
+                <div class="corner-reticle top-right"></div>
+                <div class="corner-reticle bottom-left"></div>
+                <div class="corner-reticle bottom-right"></div>
+
+                <!-- Overlay Quick Control Bar -->
+                <div class="video-overlay-controls">
+                    <div class="overlay-pill">
+                        <span class="live-dot"></span> LIVE CAM 0
+                    </div>
+                    <div class="toggle-group">
+                        <button class="chip-toggle active" data-toggle="bboxes">B-BOXES</button>
+                        <button class="chip-toggle active" data-toggle="lanes">AR LANES</button>
+                        <button class="chip-toggle active" data-toggle="radar">BEV RADAR</button>
+                        <button class="chip-toggle active" data-toggle="telemetry">HUD STATS</button>
+                    </div>
+                </div>
+
+                <!-- Web Audio Unlock Overlay (shown only when browser requires tap to enable audio) -->
+                <div class="audio-prompt-overlay" id="audio-prompt-modal">
+                    <div class="prompt-box">
+                        <svg class="prompt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                        <div class="prompt-title">ENABLE COCKPIT ACOUSTIC ALERTS</div>
+                        <div class="prompt-desc">Tap anywhere to activate real-time audio warnings on this device.</div>
+                        <button class="action-btn primary-btn" id="enable-audio-btn">ACTIVATE AUDIO</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Side: ADAS Subsystem Instrumentation Cluster -->
+        <aside class="instruments-section">
+            <!-- 1. FCW Threat & Collision Card -->
+            <div class="card instrument-card" id="card-fcw">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>FORWARD COLLISION (FCW)</span>
+                    </div>
+                    <span class="badge badge-safe" id="fcw-status-badge">SAFE</span>
+                </div>
+                <div class="card-body">
+                    <div class="fcw-metric-row">
+                        <!-- TTC Radial Dial -->
+                        <div class="gauge-box">
+                            <div class="gauge-label">TIME TO COLLISION</div>
+                            <div class="dial-container">
+                                <svg class="dial-svg" viewBox="0 0 100 100">
+                                    <circle class="dial-track" cx="50" cy="50" r="42"></circle>
+                                    <circle class="dial-fill" id="ttc-dial-fill" cx="50" cy="50" r="42"></circle>
+                                </svg>
+                                <div class="dial-center">
+                                    <span class="dial-val" id="val-ttc">--.-</span>
+                                    <span class="dial-unit">SEC</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distance & Lateral Stats -->
+                        <div class="stats-column">
+                            <div class="stat-item">
+                                <span class="stat-name">LEAD DISTANCE ($Z$)</span>
+                                <div class="stat-val-row">
+                                    <span class="stat-number" id="val-dist">--.-</span>
+                                    <span class="stat-unit">METERS</span>
+                                </div>
+                                <div class="stat-bar-track">
+                                    <div class="stat-bar-fill bar-safe" id="bar-dist" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="stat-item">
+                                <span class="stat-name">LATERAL OFFSET ($X$)</span>
+                                <div class="stat-val-row">
+                                    <span class="stat-number" id="val-lat">0.0</span>
+                                    <span class="stat-unit">M (CENTERED)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. LDW Lane Departure Card -->
+            <div class="card instrument-card" id="card-ldw">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 3l6 18M21 3l-6 18M12 7v4m0 4v2"></path>
+                        </svg>
+                        <span>LANE DEPARTURE (LDW)</span>
+                    </div>
+                    <span class="badge badge-safe" id="ldw-status-badge">TRACKING</span>
+                </div>
+                <div class="card-body">
+                    <!-- Lane Alignment Visualizer -->
+                    <div class="lane-visualizer-container">
+                        <div class="lane-road-graphic">
+                            <div class="road-edge left-edge" id="road-left-edge"></div>
+                            <div class="road-centerline"></div>
+                            <div class="vehicle-marker" id="ldw-vehicle-marker" style="left: 50%;">
+                                <div class="car-shape"></div>
+                            </div>
+                            <div class="road-edge right-edge" id="road-right-edge"></div>
+                        </div>
+                        <div class="drift-indicator-bar">
+                            <span class="drift-arrow left" id="drift-arrow-left">
+                                <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                    <polyline points="11 17 6 12 11 7"></polyline>
+                                    <polyline points="18 17 13 12 18 7"></polyline>
+                                </svg>
+                                <span>DRIFT LEFT</span>
+                            </span>
+                            <span class="drift-center-label" id="lane-offset-label">0% DEVIATION</span>
+                            <span class="drift-arrow right" id="drift-arrow-right">
+                                <span>DRIFT RIGHT</span>
+                                <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                    <polyline points="13 17 18 12 13 7"></polyline>
+                                    <polyline points="6 17 11 12 6 7"></polyline>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. FCDW Lead Vehicle Card -->
+            <div class="card instrument-card" id="card-fcdw">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>FRONT CAR DEPARTURE (FCDW)</span>
+                    </div>
+                    <span class="badge badge-info" id="fcdw-status-badge">STANDBY</span>
+                </div>
+                <div class="card-body">
+                    <div class="fcdw-row">
+                        <div class="fcdw-info">
+                            <div class="info-label">LEAD VEHICLE STATE</div>
+                            <div class="info-val" id="fcdw-state-text">NO QUEUE VEHICLE</div>
+                        </div>
+                        <div class="fcdw-timer-box">
+                            <div class="info-label">STOPPED TIME</div>
+                            <div class="timer-val" id="fcdw-stopped-timer">00:00s</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Tracked Obstacles & IPM Telemetry -->
+            <div class="card instrument-card" id="card-objects">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="6"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
+                        <span>ACTIVE ROAD OBJECTS</span>
+                    </div>
+                    <span class="badge badge-neutral" id="obj-count-badge">0 DETECTED</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="telemetry-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>CLASS</th>
+                                    <th>DIST ($Z$)</th>
+                                    <th>LAT ($X$)</th>
+                                    <th>TTC ($\tau$)</th>
+                                    <th>RISK</th>
+                                </tr>
+                            </thead>
+                            <tbody id="objects-tbody">
+                                <tr class="empty-row">
+                                    <td colspan="6">No obstacles in forward path</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Slide-in Drawer: Scenario Simulator -->
+    <div class="drawer-backdrop" id="sim-drawer-backdrop"></div>
+    <aside class="side-drawer" id="sim-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span>ADAS SCENARIO SIMULATOR</span>
+            </div>
+            <button class="icon-btn close-btn" id="close-sim-drawer" aria-label="Close scenario simulator">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="drawer-body">
+            <p class="drawer-desc">
+                Inject driving test scenarios into the cockpit to verify audio-visual alert animations,
+                urgency banners, and telemetry gauges without physical road driving.
+            </p>
+
+            <div class="sim-card">
+                <div class="sim-title">CRITICAL COLLISION (FCW DANGER)</div>
+                <p class="sim-note">Simulates immediate braking danger: TTC &lt; 1.5s, distance 6.5m, emergency double-beep acoustic pattern.</p>
+                <button class="action-btn danger-btn full-btn" data-sim="fcw-danger">TRIGGER FCW DANGER</button>
+            </div>
+
+            <div class="sim-card">
+                <div class="sim-title">COLLISION WARNING (FCW WARNING)</div>
+                <p class="sim-note">Simulates rapid vehicle approach: TTC 2.4s, distance 14m, warning beep.</p>
+                <button class="action-btn warning-btn full-btn" data-sim="fcw-warning">TRIGGER FCW WARNING</button>
+            </div>
+
+            <div class="sim-card">
+                <div class="sim-title">LANE DEPARTURE DRIFT (LDW)</div>
+                <p class="sim-note">Simulates drifting left across lane boundary (-75% offset, acoustic lane pulse).</p>
+                <button class="action-btn ldw-btn full-btn" data-sim="ldw-left">TRIGGER LDW LEFT DRIFT</button>
+            </div>
+
+            <div class="sim-card">
+                <div class="sim-title">FRONT VEHICLE MOVING (FCDW)</div>
+                <p class="sim-note">Simulates stopped traffic queue departing ahead (harmonic departure chime).</p>
+                <button class="action-btn fcdw-btn full-btn" data-sim="fcdw-depart">TRIGGER FCDW DEPARTURE</button>
+            </div>
+
+            <div class="sim-card">
+                <div class="sim-title">RESET TO NORMAL CRUISE</div>
+                <p class="sim-note">Clears all active simulation states and returns to live camera sensor feed.</p>
+                <button class="action-btn secondary-btn full-btn" data-sim="normal">RESET TO NORMAL</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Slide-in Drawer: Settings & Calibration -->
+    <div class="drawer-backdrop" id="settings-drawer-backdrop"></div>
+    <aside class="side-drawer" id="settings-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>ADAS CALIBRATION & CONFIG</span>
+            </div>
+            <button class="icon-btn close-btn" id="close-settings-drawer" aria-label="Close ADAS settings">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="drawer-body">
+            <!-- Feature Switches -->
+            <div class="setting-group">
+                <div class="group-title">ADAS ACTIVE SUBSYSTEMS</div>
+                <label class="switch-row">
+                    <span>Forward Collision Warning (FCW)</span>
+                    <input type="checkbox" id="toggle-fcw" checked>
+                </label>
+                <label class="switch-row">
+                    <span>Lane Departure Warning (LDW)</span>
+                    <input type="checkbox" id="toggle-ldw" checked>
+                </label>
+                <label class="switch-row">
+                    <span>Front Car Departure Warning (FCDW)</span>
+                    <input type="checkbox" id="toggle-fcdw" checked>
+                </label>
+            </div>
+
+            <!-- Calibration Controls -->
+            <div class="setting-group">
+                <div class="group-title">CAMERA & IPM CALIBRATION</div>
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>Camera Height ($h$)</span>
+                        <span class="slider-val" id="val-cam-height">1.25 m</span>
+                    </div>
+                    <input type="range" id="slider-cam-height" min="0.8" max="2.5" step="0.05" value="1.25">
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>Camera Pitch Angle ($\theta$)</span>
+                        <span class="slider-val" id="val-cam-pitch">5.0°</span>
+                    </div>
+                    <input type="range" id="slider-cam-pitch" min="0.0" max="15.0" step="0.5" value="5.0">
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>Collision TTC Danger Threshold</span>
+                        <span class="slider-val" id="val-ttc-thresh">1.8 s</span>
+                    </div>
+                    <input type="range" id="slider-ttc-thresh" min="1.0" max="3.5" step="0.1" value="1.8">
+                </div>
+            </div>
+
+            <button class="action-btn primary-btn full-btn" id="save-settings-btn">APPLY CALIBRATION</button>
+        </div>
+    </aside>
+
+    <!-- Bottom Alert Event Log Drawer (Collapsible) -->
+    <footer class="cockpit-footer">
+        <div class="footer-header" id="footer-toggle">
+            <div class="footer-title">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <span>ADAS EVENT LOG (<span id="log-count">0</span>)</span>
+            </div>
+            <button class="text-link-btn" id="clear-log-btn">CLEAR LOG</button>
+        </div>
+        <div class="log-stream-container" id="log-stream">
+            <div class="log-entry log-neutral">
+                <span class="log-time">00:00:00</span>
+                <span class="log-sys">[SYSTEM]</span>
+                <span class="log-msg">EdgeVision ADAS Engine Initialized and Active</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Dashboard JavaScript -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

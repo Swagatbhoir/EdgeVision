@@ -2,10 +2,15 @@
 tests/run_all_tests.py — Master test suite runner for EdgeVision ADAS.
 
 Executes tests for:
-  1. Forward Collision Warning (FCW)
-  2. Front Car Departure Warning (FCDW)
-  3. Lane Departure Warning (LDW)
-  4. Unified Alert Manager & Arbitration
+  1. IPM Distance Estimation
+  2. Forward Collision Warning (FCW)
+  3. Front Car Departure Warning (FCDW)
+  4. Lane Departure Warning (LDW)
+  5. Unified Alert Manager & Arbitration
+  6. End-to-End ADAS Integration
+  7. Cockpit HUD Renderer
+  8. Cockpit Web Dashboard & Telemetry API
+  9. Main-Loop Cockpit Pipeline Contract
 """
 
 import sys
@@ -13,11 +18,15 @@ import subprocess
 import os
 
 TEST_FILES = [
+    "tests/test_ipm_distance.py",
     "tests/test_fcw.py",
     "tests/test_fcdw.py",
     "tests/test_ldw.py",
     "tests/test_alert_manager.py",
     "tests/test_integration_pipeline.py",
+    "tests/test_hud_renderer.py",
+    "tests/test_web_api.py",
+    "tests/test_cockpit_pipeline.py",
 ]
 
 def main():
