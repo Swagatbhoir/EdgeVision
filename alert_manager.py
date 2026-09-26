@@ -14,6 +14,12 @@ Priority Hierarchy (Industry Standard Automotive ADAS):
   PRIORITY 5: FCW CAUTION    ("CAUTION"                   - Yellow, Advisory)
   PRIORITY 6: NORMAL         ("NORMAL / SAFE"             - Green/Neutral)
 
+Acoustic policy: the driver is alerted AUDIBLY by FCW DANGER ("BRAKE NOW")
+only. Every other level is visual-only (sound_pattern "NONE"), so the cabin is
+not filled with advisory chimes that mask the one warning that matters. The
+non-critical beep branches are still in _trigger_acoustic so the policy is a
+one-word change per level if it ever needs revisiting.
+
 Provides smooth UI banner formatting and acoustic alert triggering
 without flickering or overlapping audio beeps.
 """
@@ -67,7 +73,7 @@ class AlertManager:
                 "subtext": "SLOW DOWN",
                 "level": "WARNING",
                 "color_bgr": (0, 140, 255),     # Orange
-                "sound_pattern": "WARNING",
+                "sound_pattern": "NONE",        # visual-only; beeps reserved for BRAKE NOW
             })
 
         # 2. LDW Candidates
@@ -80,7 +86,7 @@ class AlertManager:
                 "subtext": sub,
                 "level": "WARNING",
                 "color_bgr": (0, 165, 255),     # Amber
-                "sound_pattern": "ADVISORY",
+                "sound_pattern": "NONE",        # visual-only; beeps reserved for BRAKE NOW
             })
 
         # 3. FCDW Candidates
@@ -92,7 +98,7 @@ class AlertManager:
                 "subtext": "PROCEED WITH CAUTION",
                 "level": "INFO",
                 "color_bgr": (255, 200, 0),     # Bright Cyan/Sky Blue
-                "sound_pattern": "CHIME",
+                "sound_pattern": "NONE",        # visual-only; beeps reserved for BRAKE NOW
             })
 
         # 4. FCW Caution
@@ -122,7 +128,19 @@ class AlertManager:
         return self.active_alert
 
     def _trigger_acoustic(self, now):
-        """Plays non-blocking sound based on active alert priority pattern."""
+        """
+        Plays a non-blocking sound based on the active alert's pattern.
+
+        Only FCW DANGER ("BRAKE NOW") currently uses a non-NONE pattern, so in
+        practice this fires once per cooldown window during a hard closing
+        situation. The other branches are retained so the acoustic policy can
+        be widened again by changing a single "sound_pattern" string above.
+
+        NOTE: `winsound` is Windows-only, so HAS_WINSOUND is False on Linux
+        and this is silent on a Raspberry Pi. A GPIO buzzer or `aplay` would
+        need to be wired in — not done here because the beep rule is
+        deliberately untouched.
+        """
         if not HAS_WINSOUND or self.active_alert is None:
             return
 

@@ -32,7 +32,10 @@ Local cv2 window + optional Phone-2 stream (Flask /video_feed on :5000)
 ### Files
 | File | Role |
 |---|---|
-| `main.py` | Current app: camera → YOLO → alerts → display + phone stream |
+| `main.py` | Current app: camera → YOLO → ADAS engines → HUD → display + web cockpit |
+| `pipeline.py` | `ADASPipeline`: the importable, testable per-frame ADAS + HUD path |
+| `web_server.py` | Telemetry hub + Flask cockpit app (MJPEG, SSE, JSON) |
+| `hud_renderer.py` | Tactical cockpit HUD rendering engine (OpenCV) |
 | `main_backup.py` | Older saved copy (no stream), kept as backup |
 | `yolo26n.pt` | YOLO26 nano weights |
 | `.venv` | Python 3.11.9 + ultralytics 8.4.139 + torch 2.14.0 + opencv-python + flask |
@@ -83,16 +86,17 @@ No lane-marking detection at all.
 
 ## 4. Phase plan & Status
 
-### Phase 3 — Robust FCW (COMPLETED)
-- [x] New module `fcw.py` — pure risk logic, no camera/YOLO dependency
+### Phase 3 — Robust FCW & IPM Distance Estimation (COMPLETED)
+- [x] New module `ipm_distance.py` — flat-ground Inverse Perspective Mapping (IPM) distance and lateral offset estimator (zero extra dependencies, pure math)
+- [x] New module `fcw.py` — pure risk logic with IPM metric ground distance + scale-change TTC
 - [x] Path-relevance filter (central corridor + horizon + vehicle/person classes)
-- [x] Relative proximity (box height fraction) — no false meters
+- [x] Real metric distance (meters ahead $Z$) and lateral offset ($X$) via contact point projection
 - [x] Scale-change time-to-collision `tau = height / growth_rate`
 - [x] 4 levels SAFE / CAUTION / WARNING / DANGER with hysteresis + debounce
 - [x] Single FCW pipeline used by the display (removed duplicated logic)
 - [x] Consistent wording: **"FORWARD COLLISION WARNING"** / "CAUTION"
-- [x] Offline unit tests (`tests/test_fcw.py`) — 9 tests passing
-- [x] Integrated into `main.py`; camera, stream, winsound beep, FPS overlay intact
+- [x] Offline unit tests (`tests/test_ipm_distance.py`, `tests/test_fcw.py`) — all passed
+- [x] Integrated into `main.py`; displays real-time `Dist: X.Xm | Lat: +/-X.Xm` and `TTC: X.Xs`
 
 ### Phase 4 — Front Car Departure Warning (COMPLETED)
 - [x] New module `fcdw.py` — tracks stationary queue lead vehicle
@@ -118,7 +122,72 @@ No lane-marking detection at all.
 - [x] High-contrast UI banner overlay + bottom multi-system status bar
 - [x] Unit tests (`tests/test_alert_manager.py`) — 5 tests passing
 - [x] E2E driving scenario integration tests (`tests/test_integration_pipeline.py`) — passing
-- [x] Master test runner (`tests/run_all_tests.py`) — 5 suites, 25 tests passing (100%)
+
+### Phase 7 — Cockpit HUD & Web Dashboard (COMPLETED)
+- [x] New module `hud_renderer.py` — tactical AR cockpit overlay: corner-bracket
+      bounding boxes, pill risk badges, alpha-blended glass panels, BEV top-down
+      radar, dashed AR lane carpet, pulsing danger vignette, top telemetry bar,
+      bottom multi-system status bar
+- [x] New module `web_server.py` — thread-safe `TelemetryHub`, MJPEG
+      `/video_feed`, SSE `/api/stream/telemetry`, JSON settings/simulator/history APIs
+- [x] New `templates/dashboard.html` + `static/css/dashboard.css` +
+      `static/js/dashboard.js` — OLED dark glassmorphism cockpit dashboard
+      (master alert banner, TTC dial, FCDW timer, object table, perf chips,
+      simulator + settings drawers, event log)
+- [x] Web Audio alert engine (CRITICAL / WARNING / ADVISORY / CHIME patterns,
+      2 s cooldown, mute + fullscreen controls, keyboard shortcuts)
+- [x] New module `pipeline.py` — `ADASPipeline` owns the four engines + HUD and
+      turns one frame + detections into the annotated frame and the telemetry
+      payload, so the production path is importable and testable
+- [x] `main.py` rewritten as a thin driver (capture → YOLO → `ADASPipeline` → publish)
+- [x] `tests/test_cockpit_pipeline.py` drives the **real** `ADASPipeline` —
+      escalation, LDW drift/recovery, FCDW departure, alert priority under
+      simultaneous alerts, settings toggles, IPM recalibration, HUD layers,
+      object-table contract, hub round-trip
+- [x] `tests/test_hud_renderer.py` — pixel/JPEG verification in a child process
+- [x] `tests/test_web_api.py` — 16 API tests incl. real MJPEG stream verification
+- [x] Lazy-OpenCV pattern + `EDGEVISION_NO_CV2=1` headless opt-out
+- [x] Master runner now **9 suites passing, 0 failing**
+
+### Phase 8 — Accessibility, Contrast & Rendering Budget (COMPLETED)
+- [x] WCAG AA contrast audit with measured ratios; `--color-text-dim` lifted to
+      `#8595AD` (5.87:1) and solid button fills darkened to one shade so every
+      action button clears 4.5:1 with white label text
+- [x] Visible `:focus-visible` rings — focus is never removed
+- [x] `role="status" aria-live="assertive"` on the master alert banner so alert
+      changes are announced to screen readers
+- [x] Decorative SVGs marked `aria-hidden`; glyph icons (`✕`, `◄◄`, `►►`)
+      replaced with inline SVG
+- [x] Narrow-phone breakpoint at 480px alongside the 1024px / 768px breakpoints
+- [x] HUD render budget met: worst-case warm median **1.61 ms/frame** at 640×480
+      (was 2.75 ms before buffer reuse and strip/ROI blending)
+
+---
+
+## 4.1 Files added since Phase 6
+
+| File | Role |
+|---|---|
+| `hud_renderer.py` | Tactical cockpit HUD rendering engine (OpenCV) |
+| `web_server.py` | Telemetry hub + Flask cockpit app (MJPEG, SSE, JSON) |
+| `pipeline.py` | `ADASPipeline` — production per-frame ADAS + HUD + telemetry |
+| `templates/dashboard.html` | Cockpit dashboard markup |
+| `static/css/dashboard.css` | Cockpit design system (tokens, components, responsive) |
+| `static/js/dashboard.js` | Telemetry polling, alert audio, simulator, settings |
+| `tests/test_hud_renderer.py` | HUD render/pixel tests |
+| `tests/test_web_api.py` | Web API + MJPEG stream tests |
+| `tests/test_cockpit_pipeline.py` | Production pipeline end-to-end tests |
+| `tests/live_cockpit_check.py` | Live server + browser-API smoke check (not in runner) |
+| `design-system/edgevision-adas/MASTER.md` | Persisted design system |
+
+### How to run
+
+```
+python main.py
+```
+Opens the OpenCV cockpit HUD window and serves the dashboard at
+**http://127.0.0.1:5000** (also reachable at `http://<pc-ip>:5000` from a phone).
+Press `q` in the OpenCV window to quit.
 
 ---
 
@@ -127,3 +196,5 @@ No lane-marking detection at all.
 - Anything tested on the laptop is labelled **tested on laptop**.
 - Anything only verified offline (synthetic frames) is labelled **offline unit test**.
 - Raspberry Pi 5 behaviour is **expected**, never claimed as tested.
+- The 1.61 ms/frame HUD figure is a **Windows laptop** measurement; the
+  Raspberry Pi 5 figure is expected but unverified.

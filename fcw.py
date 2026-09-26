@@ -4,6 +4,15 @@ fcw.py — Forward Collision Warning (FCW) module for EdgeVision ADAS.
 Pure detection -> risk logic with Flat-Ground IPM Distance Estimation:
 main.py feeds it the YOLO track results (boxes + classes) and it returns a
 stable warning level and IPM metric distances for the display/alert system.
+
+IMPORTANT — what the IPM distance does and does not drive here:
+`dist_m` / `lat_m` are DISPLAY ONLY. They feed the on-screen metre readouts,
+the BEV radar dots and the cockpit object table. The warning level below is
+driven entirely by `h_frac` (box height as a fraction of frame height) and
+`tau` (pinhole scale-change time-to-contact, height / growth rate). Swapping
+the distance source therefore changes what the driver is shown, not when a
+warning fires or what TTC says. That separation is deliberate and is why the
+distance model can be recalibrated without touching the alert behaviour.
 """
 
 from ipm_distance import IPMDistanceEstimator
@@ -76,17 +85,22 @@ LEVEL_INDEX = {level: i for i, level in enumerate(LEVEL_ORDER)}
 class ForwardCollisionWarning:
     """Tracks relevant objects and produces one stable FCW level per frame."""
 
-    def __init__(self, frame_width, frame_height, cam_height_m=1.25, pitch_angle_deg=5.0):
+    def __init__(self, frame_width, frame_height, cam_height_m=1.25,
+                 pitch_angle_deg=5.0, ipm_config=None):
         self.frame_w = frame_width
         self.frame_h = frame_height
 
-        # IPM Ground-Plane Distance Estimator
-        self.ipm = IPMDistanceEstimator(
-            frame_width=frame_width,
-            frame_height=frame_height,
-            cam_height_m=cam_height_m,
-            pitch_angle_deg=pitch_angle_deg
-        )
+        # IPM Ground-Plane Distance Estimator.
+        # ipm_config is the measured 4-point bird's-eye calibration from
+        # main.py. cam_height_m / pitch_angle_deg are accepted for backwards
+        # compatibility and IGNORED — the homography does not use them.
+        ipm_kwargs = {
+            "frame_width": frame_width,
+            "frame_height": frame_height,
+        }
+        if ipm_config:
+            ipm_kwargs.update(ipm_config)
+        self.ipm = IPMDistanceEstimator(**ipm_kwargs)
 
         # Per track-id state: (time, raw height) samples + smoothed growth.
         self._track_state = {}
